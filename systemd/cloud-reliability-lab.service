@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloud Reliability Lab FastAPI Service
+After=network.target
+
+[Service]
+User=rhanly
+Group=rhanly
+WorkingDirectory=/home/rhanly/projects/cloud-reliability-lab
+Environment="APP_VERSION=0.1.0"
+ExecStart=/home/rhanly/projects/cloud-reliability-lab/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
