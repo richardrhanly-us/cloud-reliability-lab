@@ -21,6 +21,7 @@ The current version runs on an Ubuntu homelab server and includes:
 * operational runbooks
 * incident reports
 * validation screenshots
+* documented nginx and systemd configuration files
 
 The purpose of the project is not just to deploy an application. The goal is to practice the operational work involved in keeping services reliable.
 
@@ -117,6 +118,12 @@ View service logs:
 journalctl -u cloud-reliability-lab -n 50 --no-pager
 ```
 
+The systemd service file is included in this repository:
+
+```text
+systemd/cloud-reliability-lab.service
+```
+
 ## Reverse Proxy
 
 nginx listens on port `80` and forwards traffic to the FastAPI application running locally on `127.0.0.1:8000`.
@@ -143,6 +150,12 @@ nginx error log:
 
 ```bash
 sudo tail -n 20 /var/log/nginx/cloud-reliability-lab-error.log
+```
+
+The nginx site configuration is included in this repository:
+
+```text
+nginx/cloud-reliability-lab.conf
 ```
 
 ## Monitoring
@@ -179,6 +192,7 @@ Current reliability features include:
 * Runbook documentation
 * Incident report documentation
 * Validation screenshots
+* Version-controlled service configuration examples
 
 ## Validation Screenshots
 
@@ -240,6 +254,7 @@ cloud-reliability-lab/
 ├── incidents/
 │   └── 2026-08-09-application-crash-recovery.md
 ├── nginx/
+│   └── cloud-reliability-lab.conf
 ├── runbooks/
 │   └── application-crash.md
 ├── scripts/
@@ -250,6 +265,7 @@ cloud-reliability-lab/
 │       ├── uptime-kuma-health-monitor.png
 │       └── windows-health-check.png
 └── systemd/
+    └── cloud-reliability-lab.service
 ```
 
 ## Skills Demonstrated
@@ -273,6 +289,7 @@ This project demonstrates practical experience with:
 * Runbook creation
 * Git-based project documentation
 * SRE-style failure testing
+* Configuration documentation for Linux services
 
 ## Runbooks
 
@@ -365,8 +382,6 @@ CloudWatch Logs and Metrics
 
 Planned improvements include:
 
-* Add nginx configuration file to the repository
-* Add systemd service file to the repository
 * Add install/setup script
 * Add deployment script
 * Add failure simulation scripts
@@ -403,6 +418,8 @@ systemd service: Working
 Automatic restart: Validated
 nginx reverse proxy: Working
 Uptime Kuma monitor: Working
+nginx configuration file: Added
+systemd service file: Added
 Windows health check screenshot: Added
 Uptime Kuma monitoring screenshot: Added
 systemd recovery screenshot: Added
