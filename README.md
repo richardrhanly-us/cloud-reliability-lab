@@ -17,6 +17,7 @@ The current version runs on an Ubuntu homelab server and includes:
 * journald logging
 * nginx access/error logs
 * automated service recovery
+* Uptime Kuma monitoring
 * operational runbooks
 * incident reports
 * validation screenshots
@@ -43,6 +44,10 @@ cloud-reliability-lab.service
         v
 Ubuntu homelab server
 hp-homelab
+        |
+        v
+Uptime Kuma monitoring
+/health endpoint
 ```
 
 ## Technology Stack
@@ -140,6 +145,24 @@ nginx error log:
 sudo tail -n 20 /var/log/nginx/cloud-reliability-lab-error.log
 ```
 
+## Monitoring
+
+The application is monitored with Uptime Kuma using the `/health` endpoint.
+
+Current monitor:
+
+| Setting               | Value                          |
+| --------------------- | ------------------------------ |
+| Monitor Type          | HTTP(s)                        |
+| Friendly Name         | Cloud Reliability Lab - Health |
+| URL                   | `http://192.168.1.216/health`  |
+| Heartbeat Interval    | 60 seconds                     |
+| Retries               | 2                              |
+| Request Timeout       | 15 seconds                     |
+| Accepted Status Codes | 200-299                        |
+
+The monitor checks the application through nginx, which means the check validates both the reverse proxy and the FastAPI backend.
+
 ## Reliability Features
 
 Current reliability features include:
@@ -151,7 +174,8 @@ Current reliability features include:
 * Local and remote health check validation
 * journald service logs
 * nginx access and error logs
-* Uptime Kuma monitoring
+* Uptime Kuma health monitoring
+* Response time tracking
 * Runbook documentation
 * Incident report documentation
 * Validation screenshots
@@ -163,6 +187,12 @@ Current reliability features include:
 ![Windows Health Check](screenshots/validation/windows-health-check.png)
 
 Windows PowerShell health check confirming that the FastAPI service is reachable from another machine through nginx on port `80` and returning HTTP `200`.
+
+### Uptime Kuma Health Monitor
+
+![Uptime Kuma Health Monitor](screenshots/validation/uptime-kuma-health-monitor.png)
+
+Uptime Kuma monitor showing the Cloud Reliability Lab `/health` endpoint returning successful checks through nginx with response time and uptime tracking.
 
 ### systemd Automatic Recovery Test
 
@@ -199,22 +229,6 @@ curl http://192.168.1.216/health
 
 This confirms that the application can recover automatically from a basic process failure.
 
-## Monitoring
-
-The application can be monitored with Uptime Kuma using the `/health` endpoint.
-
-Recommended monitor:
-
-| Setting               | Value                          |
-| --------------------- | ------------------------------ |
-| Monitor Type          | HTTP(s)                        |
-| Friendly Name         | Cloud Reliability Lab - Health |
-| URL                   | `http://192.168.1.216/health`  |
-| Heartbeat Interval    | 60 seconds                     |
-| Retries               | 2                              |
-| Request Timeout       | 15 seconds                     |
-| Accepted Status Codes | 200-299                        |
-
 ## Project Structure
 
 ```text
@@ -233,6 +247,7 @@ cloud-reliability-lab/
 │   └── validation/
 │       ├── journalctl-service-logs.png
 │       ├── systemd-auto-recovery.png
+│       ├── uptime-kuma-health-monitor.png
 │       └── windows-health-check.png
 └── systemd/
 ```
@@ -251,6 +266,8 @@ This project demonstrates practical experience with:
 * Application logging
 * journald log review
 * nginx access/error log review
+* Uptime Kuma monitoring
+* Response time and uptime tracking
 * Automated service recovery
 * Incident response documentation
 * Runbook creation
@@ -348,7 +365,6 @@ CloudWatch Logs and Metrics
 
 Planned improvements include:
 
-* Add Uptime Kuma screenshot documentation
 * Add nginx configuration file to the repository
 * Add systemd service file to the repository
 * Add install/setup script
@@ -361,6 +377,7 @@ Planned improvements include:
 * Add automated recovery examples
 * Add more incident reports and runbooks
 * Add architecture diagrams
+* Add public cloud deployment documentation
 
 ## Security Notes
 
@@ -385,7 +402,9 @@ FastAPI health endpoint: Working
 systemd service: Working
 Automatic restart: Validated
 nginx reverse proxy: Working
+Uptime Kuma monitor: Working
 Windows health check screenshot: Added
+Uptime Kuma monitoring screenshot: Added
 systemd recovery screenshot: Added
 journalctl service log screenshot: Added
 Application crash runbook: Created
