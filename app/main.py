@@ -13,7 +13,8 @@ def root():
     return {
         "service": "cloud-reliability-lab",
         "status": "running",
-        "message": "FastAPI reliability lab is online"
+        "message": "FastAPI reliability lab is online",
+        "config": APP_CONFIG
     }
 
 
@@ -33,3 +34,10 @@ def version():
         "service": "cloud-reliability-lab",
         "version": os.getenv("APP_VERSION", "0.1.0")
     }
+
+START_TIME = datetime.now(timezone.utc)
+
+CONFIG_PATH = "config/app.conf"
+
+with open(CONFIG_PATH, "r") as config_file:
+    APP_CONFIG = config_file.read().strip()
