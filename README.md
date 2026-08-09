@@ -220,7 +220,20 @@ Controlled application crash test showing systemd moving the service into an aut
 
 `journalctl` output showing FastAPI service startup logs and a successful health check request through the systemd-managed service.
 
-## Validated Failure Scenario
+
+### nginx Reverse Proxy Failure — Incorrect Upstream
+
+![Incorrect nginx upstream configuration](screenshots/incidents/nginx-reverse-proxy-failure/nginx-wrong-upstream-config.png)
+
+Controlled failure configuration showing nginx intentionally changed to proxy requests to `127.0.0.1:8001` while the FastAPI application remained on `127.0.0.1:8000`.
+
+### nginx Reverse Proxy Failure — Troubleshooting
+
+![nginx reverse proxy troubleshooting](screenshots/incidents/nginx-reverse-proxy-failure/nginx-failure-troubleshooting.png)
+
+Troubleshooting evidence showing HTTP `502 Bad Gateway`, a healthy FastAPI response on port `8000`, nginx remaining active, no listener on port `8001`, and nginx error logs reporting an upstream connection refusal.
+
+## Validated Failure Scenarios
 
 ### Application Crash
 
@@ -243,6 +256,41 @@ curl http://192.168.1.216/health
 
 This confirms that the application can recover automatically from a basic process failure.
 
+### nginx Reverse Proxy Upstream Failure
+
+A controlled reverse proxy failure was introduced by changing the nginx upstream from `127.0.0.1:8000` to `127.0.0.1:8001`.
+
+The nginx configuration remained syntactically valid and nginx continued running, but requests through the reverse proxy returned:
+
+```text
+502 Bad Gateway
+```
+
+The FastAPI application remained healthy when tested directly on port `8000`.
+
+The failure was traced using:
+
+```bash
+curl http://127.0.0.1/health
+curl http://127.0.0.1:8000/health
+sudo systemctl status nginx --no-pager
+ss -ltnp | grep -E ':80|:8000|:8001'
+sudo tail -n 30 /var/log/nginx/cloud-reliability-lab-error.log
+sudo grep -n "proxy_pass" /etc/nginx/sites-available/cloud-reliability-lab
+```
+
+Investigation confirmed that nginx was active on port `80`, FastAPI/Uvicorn was active on `127.0.0.1:8000`, no service was listening on port `8001`, and nginx error logs reported an upstream connection refusal.
+
+The known-good nginx configuration was restored, validated with `nginx -t`, and reloaded successfully.
+
+This scenario demonstrated fault isolation across the HTTP, reverse proxy, TCP listener, application, logging, and configuration layers.
+
+Full incident report:
+
+```text
+incidents/2026-08-09-nginx-reverse-proxy-failure.md
+```
+
 ## Project Structure
 
 ```text
@@ -252,13 +300,19 @@ cloud-reliability-lab/
 │   └── main.py
 ├── docs/
 ├── incidents/
-│   └── 2026-08-09-application-crash-recovery.md
+│   ├── 2026-08-09-application-crash-recovery.md
+│   └── 2026-08-09-nginx-reverse-proxy-failure.md
 ├── nginx/
 │   └── cloud-reliability-lab.conf
 ├── runbooks/
-│   └── application-crash.md
+│   ├── application-crash.md
+│   └── nginx-reverse-proxy-failure.md
 ├── scripts/
 ├── screenshots/
+│   ├── incidents/
+│   │   └── nginx-reverse-proxy-failure/
+│   │       ├── nginx-failure-troubleshooting.png
+│   │       └── nginx-wrong-upstream-config.png
 │   └── validation/
 │       ├── journalctl-service-logs.png
 │       ├── systemd-auto-recovery.png
@@ -278,6 +332,10 @@ This project demonstrates practical experience with:
 * systemd service management
 * nginx reverse proxy configuration
 * TCP/IP and HTTP troubleshooting
+* Reverse proxy fault isolation
+* TCP listener inspection with `ss`
+* HTTP 502 troubleshooting
+* Layer-by-layer application stack troubleshooting
 * Health check design
 * Application logging
 * journald log review
@@ -295,13 +353,13 @@ This project demonstrates practical experience with:
 
 Operational runbooks are stored in the `runbooks/` directory.
 
-Current runbook:
+Current runbooks:
 
 * `application-crash.md` — steps for detecting, investigating, and recovering from an application crash
+* `nginx-reverse-proxy-failure.md` — steps for isolating and recovering from a reverse proxy/upstream failure
 
 Planned runbooks:
 
-* nginx reverse proxy failure
 * blocked network port
 * high CPU usage
 * disk exhaustion
@@ -313,28 +371,32 @@ Planned runbooks:
 
 Incident reports are stored in the `incidents/` directory.
 
-Current incident report:
+Current incident reports:
 
-* `2026-08-09-application-crash-recovery.md`
+* `2026-08-09-application-crash-recovery.md` — controlled process failure, automatic systemd recovery, validation, and lessons learned
+* `2026-08-09-nginx-reverse-proxy-failure.md` — controlled upstream misconfiguration traced through nginx, TCP listeners, application health, and logs to identify the root cause
 
-The incident report documents a controlled application crash, systemd automatic recovery, validation steps, and lessons learned.
+The incident reports document the failure symptom, investigation path, evidence, root cause, recovery, validation, and lessons learned.
 
-## Planned Failure Scenarios
+## Failure Scenario Roadmap
 
-The lab is designed to support controlled failure testing.
+The lab is designed to support controlled failure testing across multiple layers of the application stack.
 
-Planned scenarios include:
+Completed:
 
-* Application crash
-* High CPU usage
-* Disk exhaustion
-* Permission failure
-* DNS failure
-* Blocked network port
-* Incorrect nginx reverse proxy configuration
-* Failed deployment
-* Service restart loop
-* Broken health check endpoint
+* Application process crash
+* nginx wrong upstream port / reverse proxy failure
+
+Next planned scenarios:
+
+1. Filesystem permission failure
+2. Database dependency failure
+3. Network/port failure
+4. DNS failure
+5. Resource exhaustion — CPU, memory, and disk
+6. Bad deployment
+7. Pipeline failure
+8. Configuration drift
 
 ## Planned AWS Expansion
 
@@ -426,5 +488,10 @@ systemd recovery screenshot: Added
 journalctl service log screenshot: Added
 Application crash runbook: Created
 Application crash incident report: Created
+nginx reverse proxy failure test: Validated
+nginx reverse proxy failure screenshots: Added
+nginx reverse proxy failure runbook: Created
+nginx reverse proxy incident report: Created
+Next scenario: Filesystem permission failure
 AWS deployment: Planned
 ```
