@@ -19,8 +19,9 @@ The current version runs on an Ubuntu homelab server and includes:
 * automated service recovery
 * operational runbooks
 * incident reports
+* validation screenshots
 
-The purpose of the project is not just to deploy an application, but to practice the operational work around keeping services reliable.
+The purpose of the project is not just to deploy an application. The goal is to practice the operational work involved in keeping services reliable.
 
 ## Current Architecture
 
@@ -46,16 +47,17 @@ hp-homelab
 
 ## Technology Stack
 
-| Component     | Purpose                                  |
-| ------------- | ---------------------------------------- |
-| Ubuntu Server | Linux host environment                   |
-| FastAPI       | Python web application framework         |
-| Uvicorn       | ASGI application server                  |
-| systemd       | Service management and automatic restart |
-| nginx         | Reverse proxy                            |
-| journald      | Service logging                          |
-| Uptime Kuma   | Health check monitoring                  |
-| Git           | Version control                          |
+| Component     | Purpose                                    |
+| ------------- | ------------------------------------------ |
+| Ubuntu Server | Linux host environment                     |
+| FastAPI       | Python web application framework           |
+| Uvicorn       | ASGI application server                    |
+| systemd       | Service management and automatic restart   |
+| nginx         | Reverse proxy                              |
+| journald      | Service logging                            |
+| nginx logs    | HTTP access and error logging              |
+| Uptime Kuma   | Health check monitoring                    |
+| Git           | Version control and documentation tracking |
 
 ## Application Endpoints
 
@@ -104,7 +106,7 @@ Restart the service:
 sudo systemctl restart cloud-reliability-lab
 ```
 
-View logs:
+View service logs:
 
 ```bash
 journalctl -u cloud-reliability-lab -n 50 --no-pager
@@ -152,6 +154,27 @@ Current reliability features include:
 * Uptime Kuma monitoring
 * Runbook documentation
 * Incident report documentation
+* Validation screenshots
+
+## Validation Screenshots
+
+### Windows Health Check Through nginx
+
+![Windows Health Check](screenshots/validation/windows-health-check.png)
+
+Windows PowerShell health check confirming that the FastAPI service is reachable from another machine through nginx on port `80` and returning HTTP `200`.
+
+### systemd Automatic Recovery Test
+
+![systemd Automatic Recovery](screenshots/validation/systemd-auto-recovery.png)
+
+Controlled application crash test showing systemd moving the service into an automatic restart state after the FastAPI process was intentionally killed. The `/health` endpoint returned successfully after recovery.
+
+### Service Logs with journalctl
+
+![journalctl Service Logs](screenshots/validation/journalctl-service-logs.png)
+
+`journalctl` output showing FastAPI service startup logs and a successful health check request through the systemd-managed service.
 
 ## Validated Failure Scenario
 
@@ -206,6 +229,11 @@ cloud-reliability-lab/
 ├── runbooks/
 │   └── application-crash.md
 ├── scripts/
+├── screenshots/
+│   └── validation/
+│       ├── journalctl-service-logs.png
+│       ├── systemd-auto-recovery.png
+│       └── windows-health-check.png
 └── systemd/
 ```
 
@@ -357,6 +385,9 @@ FastAPI health endpoint: Working
 systemd service: Working
 Automatic restart: Validated
 nginx reverse proxy: Working
+Windows health check screenshot: Added
+systemd recovery screenshot: Added
+journalctl service log screenshot: Added
 Application crash runbook: Created
 Application crash incident report: Created
 AWS deployment: Planned
