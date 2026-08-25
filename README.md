@@ -1,5 +1,7 @@
 # Cloud Reliability Lab
 
+![Tests](https://github.com/richardrhanly-us/cloud-reliability-lab/actions/workflows/test.yml/badge.svg)
+
 Production-style Linux reliability lab built to practice systems administration, service monitoring, incident response, and SRE-style operations.
 
 This project starts as a local homelab deployment and is designed to later expand into an AWS-based cloud reliability environment using EC2, CloudWatch, IAM, and Terraform.
