@@ -24,3 +24,8 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
