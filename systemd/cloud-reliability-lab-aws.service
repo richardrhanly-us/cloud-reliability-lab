@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ssm-user
-Group=ssm-user
+User=cloudlab
+Group=cloudlab
 WorkingDirectory=/opt/cloud-reliability-lab
 
 Environment="APP_VERSION=0.1.0"
