@@ -1,3 +1,7 @@
+# ============================================================
+# Shared Configuration
+# ============================================================
+
 locals {
   common_tags = {
     Project   = var.project_name
@@ -5,9 +9,17 @@ locals {
   }
 }
 
+# ============================================================
+# Amazon Linux 2023 AMI
+# ============================================================
+
 data "aws_ssm_parameter" "amazon_linux_2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
+
+# ============================================================
+# Networking
+# ============================================================
 
 resource "aws_vpc" "main" {
   cidr_block           = "10.20.0.0/16"
@@ -56,6 +68,10 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# ============================================================
+# Security Group
+# ============================================================
+
 resource "aws_security_group" "web" {
   name        = "${var.project_name}-web-sg"
   description = "Security group for Cloud Reliability Lab web server"
@@ -87,6 +103,11 @@ resource "aws_vpc_security_group_egress_rule" "all" {
 
   tags = local.common_tags
 }
+
+# ============================================================
+# EC2 IAM, SSM, and CloudWatch Permissions
+# ============================================================
+
 resource "aws_iam_role" "ec2" {
   name = "${var.project_name}-ec2-role"
 
@@ -124,6 +145,10 @@ resource "aws_iam_instance_profile" "ec2" {
   role = aws_iam_role.ec2.name
 }
 
+# ============================================================
+# EC2 Application Server
+# ============================================================
+
 resource "aws_instance" "app" {
   ami           = data.aws_ssm_parameter.amazon_linux_2023_ami.value
   instance_type = var.instance_type
@@ -135,6 +160,10 @@ resource "aws_instance" "app" {
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
+  user_data = file("${path.module}/../scripts/aws-bootstrap.sh")
+
+  user_data_replace_on_change = true
+
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
@@ -144,6 +173,10 @@ resource "aws_instance" "app" {
     Name = "${var.project_name}-app"
   })
 }
+
+# ============================================================
+# CloudWatch Monitoring
+# ============================================================
 
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name          = "${var.project_name}-high-cpu"
