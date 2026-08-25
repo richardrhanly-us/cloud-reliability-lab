@@ -144,3 +144,23 @@ resource "aws_instance" "app" {
     Name = "${var.project_name}-app"
   })
 }
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+  alarm_name          = "${var.project_name}-high-cpu"
+  alarm_description   = "Triggers when EC2 CPU utilization stays above 80 percent."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+
+  dimensions = {
+    InstanceId = aws_instance.app.id
+  }
+
+  treat_missing_data = "notBreaching"
+
+  tags = local.common_tags
+}
