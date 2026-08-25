@@ -5,6 +5,10 @@ locals {
   }
 }
 
+data "aws_ssm_parameter" "amazon_linux_2023_ami" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.20.0.0/16"
   enable_dns_support   = true
@@ -82,4 +86,56 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   ip_protocol = "-1"
 
   tags = local.common_tags
+}
+resource "aws_iam_role" "ec2" {
+  name = "${var.project_name}-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2" {
+  name = "${var.project_name}-ec2-profile"
+  role = aws_iam_role.ec2.name
+}
+
+resource "aws_instance" "app" {
+  ami           = data.aws_ssm_parameter.amazon_linux_2023_ami.value
+  instance_type = var.instance_type
+
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.web.id]
+
+  associate_public_ip_address = true
+
+  iam_instance_profile = aws_iam_instance_profile.ec2.name
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-app"
+  })
 }

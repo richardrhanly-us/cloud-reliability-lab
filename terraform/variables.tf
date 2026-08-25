@@ -9,3 +9,9 @@ variable "project_name" {
   type        = string
   default     = "cloud-reliability-lab"
 }
+
+variable "instance_type" {
+  description = "EC2 instance type for the Cloud Reliability Lab."
+  type        = string
+  default     = "t3.micro"
+}
