@@ -16,5 +16,8 @@ ExecStart=/opt/cloud-reliability-lab/.venv/bin/uvicorn app.main:app --host 127.0
 Restart=always
 RestartSec=5
 
+StandardOutput=append:/var/log/cloud-reliability-lab/app.log
+StandardError=append:/var/log/cloud-reliability-lab/app.log
+
 [Install]
 WantedBy=multi-user.target
