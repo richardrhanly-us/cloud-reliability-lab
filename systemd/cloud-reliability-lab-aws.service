@@ -1,0 +1,20 @@
+[Unit]
+Description=Cloud Reliability Lab FastAPI Service - AWS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ssm-user
+Group=ssm-user
+WorkingDirectory=/opt/cloud-reliability-lab
+
+Environment="APP_VERSION=0.1.0"
+
+ExecStart=/opt/cloud-reliability-lab/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
