@@ -54,6 +54,10 @@ The purpose of the project is not simply to deploy an application. The goal is t
 
 ## Current Architecture
 
+![Cloud Reliability Lab AWS Architecture](screenshots/Architecture-diagram.png)
+
+The AWS deployment uses a Terraform-managed VPC, public subnet, security group, IAM role, EC2 instance, CloudWatch logging and monitoring, Systems Manager access, and S3-backed remote Terraform state.
+
 ```text
                            Internet
                               |
@@ -100,9 +104,6 @@ Terraform
    v
 S3 Remote State
 Versioning + Encryption + State Locking
-```
-
-Administrative access to the EC2 instance is performed through AWS Systems Manager Session Manager rather than public SSH.
 
 ## Technology Stack
 
