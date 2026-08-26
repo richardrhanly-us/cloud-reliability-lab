@@ -31,3 +31,4 @@ Thumbs.db
 terraform.tfvars
 *.tfplan
 tfplan
+terraform-state-recovered-backup.json
