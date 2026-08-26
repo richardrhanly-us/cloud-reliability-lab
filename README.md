@@ -550,6 +550,69 @@ Full incident report:
 incidents/2026-08-09-nginx-reverse-proxy-failure.md
 ```
 
+### AWS Application Process Failure
+
+A controlled application failure was introduced on the AWS EC2 application server by terminating the systemd-managed Uvicorn process with `SIGKILL`.
+
+Before the failure:
+
+```text
+MainPID=26969
+NRestarts=0
+ActiveState=active
+SubState=running
+```
+
+Immediately after termination, systemd reported:
+
+```text
+MainPID=0
+NRestarts=0
+ActiveState=activating
+SubState=auto-restart
+```
+
+After the configured restart delay:
+
+```text
+MainPID=33465
+NRestarts=1
+ActiveState=active
+SubState=running
+```
+
+The application recovered automatically without a manual restart.
+
+Recovery was validated through:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1/health
+```
+
+Both health checks returned successfully.
+
+The local systemd journal recorded the process termination and automatic restart, while CloudWatch recorded both the original and replacement Uvicorn startup events:
+
+```text
+INFO: Started server process [26969]
+INFO: Started server process [33465]
+```
+
+This scenario validated automatic service recovery on the AWS-hosted deployment and confirmed that centralized application logging continued across the restart.
+
+Full runbook:
+
+```text
+runbooks/aws-application-process-failure.md
+```
+
+Full incident report:
+
+```text
+incidents/2026-08-25-aws-application-process-failure.md
+```
+
 ## AWS Deployment
 
 The original homelab architecture has been successfully extended into AWS.
@@ -695,6 +758,7 @@ Current runbooks:
 
 - `application-crash.md` — detecting, investigating, and recovering from an application crash
 - `nginx-reverse-proxy-failure.md` — isolating and recovering from a reverse proxy/upstream failure
+- `aws-application-process-failure.md` — detecting, validating, and recovering from an unexpected FastAPI/Uvicorn process failure on the AWS EC2 deployment
 
 Planned runbooks:
 
@@ -715,6 +779,7 @@ Current incident reports:
 
 - `2026-08-09-application-crash-recovery.md` — controlled process failure, automatic systemd recovery, validation, and lessons learned
 - `2026-08-09-nginx-reverse-proxy-failure.md` — controlled upstream misconfiguration traced through nginx, TCP listeners, application health, and logs to identify the root cause
+- `2026-08-25-aws-application-process-failure.md` — controlled AWS-hosted Uvicorn process failure, systemd automatic recovery, health validation, and CloudWatch startup evidence
 
 The incident reports document:
 
@@ -810,6 +875,10 @@ Application crash runbook: Created
 nginx failure runbook: Created
 Application crash incident report: Created
 nginx incident report: Created
+AWS application process failure test: Validated
+AWS systemd automatic recovery: Validated
+AWS post-recovery health check: Validated
+CloudWatch restart evidence: Validated
 
 AWS VPC infrastructure: Working
 Amazon Linux 2023 EC2 deployment: Working
@@ -828,5 +897,5 @@ Terraform state encryption: Enabled
 Terraform state locking: Working
 Terraform drift check: Clean
 
-Next reliability scenario: AWS-specific failure and recovery test
+Next reliability scenario: AWS nginx or network-path failure
 ```
