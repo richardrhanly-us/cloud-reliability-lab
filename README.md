@@ -1,6 +1,6 @@
 **# Cloud Reliability Lab**
 
-![Tests]\(https\://github.com/richardrhanly-us/cloud-reliability-lab/actions/workflows/test.yml/badge.svg)
+![Tests](https://github.com/richardrhanly-us/cloud-reliability-lab/actions/workflows/test.yml/badge.svg)
 
 Production-style cloud reliability lab built to practice Linux systems administration, infrastructure automation, monitoring, incident response, and SRE-style operations.
 
