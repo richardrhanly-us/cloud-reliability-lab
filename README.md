@@ -1,4 +1,4 @@
-**# Cloud Reliability Lab**
+# Cloud Reliability Lab
 
 ![Tests](https://github.com/richardrhanly-us/cloud-reliability-lab/actions/workflows/test.yml/badge.svg)
 
@@ -12,7 +12,7 @@ The Cloud Reliability Lab is a hands-on infrastructure and operations project de
 
 The project currently includes two environments.
 
-**### AWS Deployment**
+### AWS Deployment
 
 \- Amazon Linux 2023 EC2 application server
 
@@ -54,7 +54,7 @@ The project currently includes two environments.
 
 \- Versioned and encrypted S3 state storage
 
-**### Original Homelab Deployment**
+### Original Homelab Deployment
 
 \- Ubuntu Server
 
@@ -84,7 +84,7 @@ The AWS deployment extends the project with Infrastructure as Code, automated pr
 
 The purpose of the project is not simply to deploy an application. The goal is to practice the operational work involved in keeping services reliable.
 
-**## Current Architecture**
+## Current Architecture
 
 ![Cloud Reliability Lab AWS Architecture]\(screenshots/Architecture-diagram.png)
 
@@ -270,7 +270,7 @@ Example response:
 
 The \`/ready\` endpoint is designed to validate a PostgreSQL dependency. The current AWS environment does not yet include an AWS-hosted PostgreSQL database, so database readiness is a future infrastructure expansion.
 
-**## Automated AWS Deployment**
+## Automated AWS Deployment
 
 The EC2 application server is provisioned by Terraform and configured automatically through a bootstrap script passed to EC2 as \`user\_data\`.
 
@@ -328,7 +328,7 @@ The replacement successfully:
 
 This validates that the AWS application server can be recreated from code rather than relying on manual configuration.
 
-**## Infrastructure as Code**
+## Infrastructure as Code
 
 Terraform manages the AWS infrastructure for the lab.
 
@@ -406,7 +406,7 @@ No changes. Your infrastructure matches the configuration.
 
 \`\`\`
 
-**## Terraform Remote State**
+## Terraform Remote State
 
 Terraform state is stored remotely in Amazon S3 rather than being tied to an individual development workstation.
 
@@ -440,7 +440,7 @@ This allows the infrastructure to be managed consistently from multiple developm
 
 Local Terraform state files are excluded from Git.
 
-**## Service Management**
+## Service Management
 
 The FastAPI application runs as a systemd service.
 
@@ -494,7 +494,7 @@ Application output is written to:
 
 \`\`\`
 
-**## Reverse Proxy**
+## Reverse Proxy
 
 nginx listens on port \`80\` and forwards traffic to the FastAPI application running locally on \`127.0.0.1:8000\`.
 
@@ -542,9 +542,9 @@ nginx/cloud-reliability-lab.conf
 
 \`\`\`
 
-**## Monitoring and Logging**
+## Monitoring and Logging
 
-**### AWS CloudWatch**
+### AWS CloudWatch
 
 The AWS deployment uses the CloudWatch Agent to centralize application, nginx, and systemd lifecycle logs.
 
@@ -608,7 +608,7 @@ cloudwatch/amazon-cloudwatch-agent.json
 
 \`\`\`
 
-**### CloudWatch CPU Alarm**
+### CloudWatch CPU Alarm
 
 Terraform manages the alarm:
 
@@ -636,7 +636,7 @@ Evaluation periods: 2
 
 The alarm enters the alarm state if average EC2 CPU utilization remains above 80 percent for two consecutive five-minute periods.
 
-**### CloudWatch systemd Failure Alarm**
+### CloudWatch systemd Failure Alarm
 
 Terraform also manages an application-process failure alarm:
 
@@ -690,13 +690,13 @@ State: ALARM
 
 Alarm notification delivery is not yet configured; adding SNS or another notification destination is a planned improvement.
 
-**### Homelab Monitoring**
+### Homelab Monitoring
 
 The original Ubuntu deployment uses Uptime Kuma to monitor the \`/health\` endpoint.
 
 The monitor checks the application through nginx, validating both the reverse proxy and the FastAPI backend.
 
-**## Reliability Features**
+## Reliability Features
 
 Current reliability features include:
 
@@ -752,47 +752,47 @@ Current reliability features include:
 
 \- infrastructure drift validation
 
-**## Validation Screenshots**
+## Validation Screenshots
 
-**### Windows Health Check Through nginx**
+### Windows Health Check Through nginx
 
 ![Windows Health Check]\(screenshots/validation/windows-health-check.png)
 
 Windows PowerShell health check confirming that the FastAPI service is reachable from another machine through nginx on port \`80\` and returning HTTP \`200\`.
 
-**### Uptime Kuma Health Monitor**
+### Uptime Kuma Health Monitor
 
 ![Uptime Kuma Health Monitor]\(screenshots/validation/uptime-kuma-health-monitor.png)
 
 Uptime Kuma monitor showing the original homelab \`/health\` endpoint returning successful checks through nginx with response-time and uptime tracking.
 
-**### systemd Automatic Recovery Test**
+### systemd Automatic Recovery Test
 
 ![systemd Automatic Recovery]\(screenshots/validation/systemd-auto-recovery.png)
 
 Controlled application crash test showing systemd moving the service into an automatic restart state after the FastAPI process was intentionally killed. The \`/health\` endpoint returned successfully after recovery.
 
-**### Service Logs with journalctl**
+### Service Logs with journalctl
 
 ![journalctl Service Logs]\(screenshots/validation/journalctl-service-logs.png)
 
 \`journalctl\` output showing FastAPI service startup logs and a successful health check request through the systemd-managed service.
 
-**### nginx Reverse Proxy Failure — Incorrect Upstream**
+### nginx Reverse Proxy Failure — Incorrect Upstream
 
 ![Incorrect nginx upstream configuration]\(screenshots/incidents/nginx-reverse-proxy-failure/nginx-wrong-upstream-config.png)
 
 Controlled failure configuration showing nginx intentionally changed to proxy requests to \`127.0.0.1:8001\` while the FastAPI application remained on \`127.0.0.1:8000\`.
 
-**### nginx Reverse Proxy Failure — Troubleshooting**
+### nginx Reverse Proxy Failure — Troubleshooting
 
 ![nginx reverse proxy troubleshooting]\(screenshots/incidents/nginx-reverse-proxy-failure/nginx-failure-troubleshooting.png)
 
 Troubleshooting evidence showing HTTP \`502 Bad Gateway\`, a healthy FastAPI response on port \`8000\`, nginx remaining active, no listener on port \`8001\`, and nginx error logs reporting an upstream connection refusal.
 
-**## Validated Failure Scenarios**
+## Validated Failure Scenarios
 
-**### Application Crash**
+### Application Crash
 
 A controlled application failure was triggered using:
 
@@ -820,7 +820,7 @@ The original homelab deployment was also validated remotely from another machine
 
 This confirms that the application can recover automatically from a basic process failure.
 
-**### nginx Reverse Proxy Upstream Failure**
+### nginx Reverse Proxy Upstream Failure
 
 A controlled reverse proxy failure was introduced by changing the nginx upstream from:
 
@@ -886,7 +886,7 @@ incidents/2026-08-09-nginx-reverse-proxy-failure.md
 
 \`\`\`
 
-**### AWS Application Process Failure**
+### AWS Application Process Failure
 
 A controlled application failure was introduced on the AWS EC2 application server by terminating the systemd-managed Uvicorn process with \`SIGKILL\`.
 
@@ -994,7 +994,7 @@ incidents/2026-08-25-aws-application-process-failure.md
 
 \`\`\`
 
-**## AWS Deployment**
+## AWS Deployment
 
 The original homelab architecture has been successfully extended into AWS.
 
@@ -1044,7 +1044,7 @@ The original homelab architecture has been successfully extended into AWS.
 
 \| Terraform State Locking | Implemented | Concurrent state protection |
 
-**## Project Structure**
+## Project Structure
 
 \`\`\`text
 
@@ -1148,7 +1148,7 @@ cloud-reliability-lab/
 
 \`\`\`
 
-**## Automated Testing**
+## Automated Testing
 
 Application tests are implemented with \`pytest\`.
 
@@ -1170,7 +1170,7 @@ python -m pytest -v
 
 GitHub Actions runs the test suite automatically on repository changes.
 
-**## Skills Demonstrated**
+## Skills Demonstrated
 
 This project demonstrates practical experience with:
 
@@ -1256,7 +1256,7 @@ This project demonstrates practical experience with:
 
 \- reproducible infrastructure deployment
 
-**## Runbooks**
+## Runbooks
 
 Operational runbooks are stored in the \`runbooks/\` directory.
 
@@ -1286,7 +1286,7 @@ Planned runbooks:
 
 \- failed EC2 bootstrap
 
-**## Incident Reports**
+## Incident Reports
 
 Incident reports are stored in the \`incidents/\` directory.
 
@@ -1314,7 +1314,7 @@ The incident reports document:
 
 \- lessons learned
 
-**## Failure Scenario Roadmap**
+## Failure Scenario Roadmap
 
 The lab is designed to support controlled failure testing across multiple layers of the application and infrastructure stack.
 
@@ -1350,7 +1350,7 @@ Next planned scenarios:
 
 9\. Terraform configuration drift
 
-**## Security Notes**
+## Security Notes
 
 Current AWS security practices include:
 
@@ -1386,7 +1386,7 @@ Current AWS security practices include:
 
 The current public application endpoint uses HTTP. HTTPS/TLS is a planned improvement.
 
-**## Future Improvements**
+## Future Improvements
 
 Planned improvements include:
 
@@ -1412,7 +1412,7 @@ Planned improvements include:
 
 \- expand incident reports
 
-**## Status**
+## Status
 
 \`\`\`text
 
