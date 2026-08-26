@@ -6,7 +6,7 @@ Production-style cloud reliability lab built to practice Linux systems administr
 
 The project began as a manually configured Ubuntu homelab deployment and has since been expanded into a reproducible AWS environment using Amazon EC2, IAM, Systems Manager, CloudWatch, Terraform, and S3-backed remote Terraform state.
 
-**## Overview**
+## Overview
 
 The Cloud Reliability Lab is a hands-on infrastructure and operations project demonstrating how a small web service can be deployed, monitored, intentionally broken, recovered, and documented.
 
