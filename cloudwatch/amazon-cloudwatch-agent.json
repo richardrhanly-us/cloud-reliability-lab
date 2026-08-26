@@ -13,6 +13,12 @@
             "retention_in_days": 14
           },
           {
+            "file_path": "/var/log/cloud-reliability-lab/systemd.log",
+            "log_group_name": "/cloud-reliability-lab/systemd",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 14
+          },
+          {
             "file_path": "/var/log/nginx/cloud-reliability-lab-access.log",
             "log_group_name": "/cloud-reliability-lab/nginx/access",
             "log_stream_name": "{instance_id}",

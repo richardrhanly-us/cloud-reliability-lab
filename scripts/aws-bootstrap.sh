@@ -74,15 +74,20 @@ mkdir -p /var/log/cloud-reliability-lab
 chown "${APP_USER}:${APP_GROUP}" /var/log/cloud-reliability-lab
 
 # ------------------------------------------------------------
-# 7. Install systemd service
+# 7. Install systemd services
 # ------------------------------------------------------------
 
 cp \
     "${APP_DIR}/systemd/cloud-reliability-lab-aws.service" \
     /etc/systemd/system/cloud-reliability-lab.service
 
+cp \
+    "${APP_DIR}/systemd/cloud-reliability-journal-export.service" \
+    /etc/systemd/system/cloud-reliability-journal-export.service
+
 systemctl daemon-reload
 systemctl enable cloud-reliability-lab
+systemctl enable cloud-reliability-journal-export
 
 # ------------------------------------------------------------
 # 8. Configure nginx
@@ -148,6 +153,7 @@ cp \
 # ------------------------------------------------------------
 
 systemctl restart cloud-reliability-lab
+systemctl restart cloud-reliability-journal-export
 systemctl restart nginx
 
 # ------------------------------------------------------------
