@@ -2,83 +2,149 @@
 
 ![Tests](https://github.com/richardrhanly-us/cloud-reliability-lab/actions/workflows/test.yml/badge.svg)
 
-Production-style Linux reliability lab built to practice systems administration, service monitoring, incident response, and SRE-style operations.
+Production-style cloud reliability lab built to practice Linux systems administration, infrastructure automation, monitoring, incident response, and SRE-style operations.
 
-This project starts as a local homelab deployment and is designed to later expand into an AWS-based cloud reliability environment using EC2, CloudWatch, IAM, and Terraform.
+The project began as a manually configured Ubuntu homelab deployment and has since been expanded into a reproducible AWS environment using Amazon EC2, IAM, Systems Manager, CloudWatch, Terraform, and S3-backed remote Terraform state.
 
 ## Overview
 
-The Cloud Reliability Lab is a hands-on operations project that demonstrates how a small web service can be deployed, monitored, broken intentionally, recovered, and documented.
+The Cloud Reliability Lab is a hands-on infrastructure and operations project demonstrating how a small web service can be deployed, monitored, intentionally broken, recovered, and documented.
 
-The current version runs on an Ubuntu homelab server and includes:
+The project currently includes two environments.
 
-* FastAPI application
-* systemd service management
-* nginx reverse proxy
-* health check endpoint
-* journald logging
-* nginx access/error logs
-* automated service recovery
-* Uptime Kuma monitoring
-* operational runbooks
-* incident reports
-* validation screenshots
-* documented nginx and systemd configuration files
+### AWS Deployment
 
-The purpose of the project is not just to deploy an application. The goal is to practice the operational work involved in keeping services reliable.
+- Amazon Linux 2023 EC2 application server
+- Terraform-managed AWS infrastructure
+- Dedicated VPC and public subnet
+- Internet gateway and public route table
+- Security group exposing HTTP only
+- IAM instance role
+- AWS Systems Manager Session Manager for administration
+- No public SSH access
+- Automated EC2 bootstrap using Terraform `user_data`
+- FastAPI / Uvicorn application
+- systemd service management
+- nginx reverse proxy
+- CloudWatch Agent log forwarding
+- CloudWatch CPU alarm
+- S3 remote Terraform state
+- Terraform state locking
+- Versioned and encrypted S3 state storage
+
+### Original Homelab Deployment
+
+- Ubuntu Server
+- FastAPI application
+- systemd service management
+- nginx reverse proxy
+- `/health` monitoring
+- journald and nginx logs
+- Uptime Kuma monitoring
+- controlled failure testing
+- operational runbooks
+- incident reports
+- validation screenshots
+
+The homelab environment was used to develop and validate the service and failure scenarios before moving the architecture into AWS.
+
+The AWS deployment extends the project with Infrastructure as Code, automated provisioning, centralized logging, remote administration, monitoring, and shared Terraform state.
+
+The purpose of the project is not simply to deploy an application. The goal is to practice the operational work involved in keeping services reliable.
 
 ## Current Architecture
 
 ```text
-Windows Client / Browser
-        |
-        v
-nginx reverse proxy
-Port 80
-        |
-        v
-FastAPI / Uvicorn
-127.0.0.1:8000
-        |
-        v
-systemd service
-cloud-reliability-lab.service
-        |
-        v
-Ubuntu homelab server
-hp-homelab
-        |
-        v
-Uptime Kuma monitoring
-/health endpoint
+                           Internet
+                              |
+                              v
+                    AWS Security Group
+                       HTTP :80 only
+                              |
+                              v
+                         Amazon EC2
+                      Amazon Linux 2023
+                              |
+                              v
+                          nginx :80
+                              |
+                              v
+                    FastAPI / Uvicorn
+                      127.0.0.1:8000
+                              |
+                              v
+                           systemd
+                              |
+               +--------------+--------------+
+               |                             |
+               v                             v
+       Application Logs                 nginx Logs
+               |                             |
+               +--------------+--------------+
+                              |
+                              v
+                     CloudWatch Agent
+                              |
+                              v
+                      CloudWatch Logs
+
+
+Terraform
+   |
+   +--> VPC / Subnet / Routing
+   +--> Security Group
+   +--> IAM / SSM Permissions
+   +--> EC2
+   +--> CloudWatch Alarm
+   |
+   v
+S3 Remote State
+Versioning + Encryption + State Locking
 ```
+
+Administrative access to the EC2 instance is performed through AWS Systems Manager Session Manager rather than public SSH.
 
 ## Technology Stack
 
-| Component     | Purpose                                    |
-| ------------- | ------------------------------------------ |
-| Ubuntu Server | Linux host environment                     |
-| FastAPI       | Python web application framework           |
-| Uvicorn       | ASGI application server                    |
-| systemd       | Service management and automatic restart   |
-| nginx         | Reverse proxy                              |
-| journald      | Service logging                            |
-| nginx logs    | HTTP access and error logging              |
-| Uptime Kuma   | Health check monitoring                    |
-| Git           | Version control and documentation tracking |
+| Component | Purpose |
+| --- | --- |
+| Amazon EC2 | AWS compute host |
+| Amazon Linux 2023 | EC2 operating system |
+| Terraform | Infrastructure as Code |
+| Amazon S3 | Remote Terraform state |
+| AWS IAM | EC2 permissions and instance role |
+| AWS Systems Manager | Administrative access without public SSH |
+| Amazon CloudWatch | Centralized logs, metrics, and alarms |
+| CloudWatch Agent | Ships application and nginx logs to CloudWatch |
+| FastAPI | Python web application framework |
+| Uvicorn | ASGI application server |
+| systemd | Service management and automatic restart |
+| nginx | Public-facing reverse proxy |
+| GitHub Actions | Automated application testing |
+| pytest | Python test framework |
+| Git | Version control and infrastructure history |
+| Ubuntu Server | Original homelab environment |
+| Uptime Kuma | Original homelab health monitoring |
 
 ## Application Endpoints
 
-| Endpoint   | Purpose                      |
-| ---------- | ---------------------------- |
-| `/`        | Basic application status     |
-| `/health`  | Health check endpoint        |
-| `/version` | Application version endpoint |
+| Endpoint | Purpose |
+| --- | --- |
+| `/` | Basic application status |
+| `/health` | Application health check |
+| `/ready` | Database dependency readiness check |
+| `/version` | Application version |
 
-Example health check:
+Example AWS health check:
 
 ```bash
-curl http://192.168.1.216/health
+curl http://<EC2_PUBLIC_IP>/health
+```
+
+The current EC2 public IP can be retrieved through Terraform:
+
+```bash
+terraform output -raw ec2_public_ip
 ```
 
 Example response:
@@ -86,11 +152,127 @@ Example response:
 ```json
 {
   "status": "ok",
-  "hostname": "hp-homelab",
-  "started_at": "2026-08-09T21:25:17.200127+00:00",
-  "checked_at": "2026-08-09T21:25:48.571944+00:00"
+  "hostname": "ip-10-20-1-221.ec2.internal",
+  "started_at": "2026-08-25T21:29:32.573054+00:00",
+  "checked_at": "2026-08-25T22:06:57.875909+00:00"
 }
 ```
+
+The `/ready` endpoint is designed to validate a PostgreSQL dependency. The current AWS environment does not yet include an AWS-hosted PostgreSQL database, so database readiness is a future infrastructure expansion.
+
+## Automated AWS Deployment
+
+The EC2 application server is provisioned by Terraform and configured automatically through a bootstrap script passed to EC2 as `user_data`.
+
+The bootstrap process:
+
+1. Updates Amazon Linux packages.
+2. Installs Git, nginx, Python 3.11, and the CloudWatch Agent.
+3. Creates a dedicated `cloudlab` system user.
+4. Clones the application repository.
+5. Creates the Python virtual environment.
+6. Installs application dependencies.
+7. Creates the application log directory.
+8. Installs and enables the systemd service.
+9. Configures nginx.
+10. Configures and starts the CloudWatch Agent.
+11. Starts the application and nginx.
+12. Performs local health checks before completing.
+
+The bootstrap script is stored at:
+
+```text
+scripts/aws-bootstrap.sh
+```
+
+The automated deployment was validated by replacing the original manually configured AWS EC2 instance with a Terraform-created replacement.
+
+The replacement successfully:
+
+- bootstrapped the application without manual server configuration
+- started the systemd-managed FastAPI service
+- configured nginx
+- returned successful `/health` and `/version` responses
+- registered with AWS Systems Manager
+- began sending application logs to CloudWatch
+- updated the Terraform-managed CloudWatch CPU alarm to the new instance ID
+
+This validates that the AWS application server can be recreated from code rather than relying on manual configuration.
+
+## Infrastructure as Code
+
+Terraform manages the AWS infrastructure for the lab.
+
+Managed resources include:
+
+- VPC
+- public subnet
+- internet gateway
+- public route table
+- default internet route
+- route table association
+- security group
+- HTTP ingress rule
+- outbound security group rule
+- EC2 IAM role
+- IAM instance profile
+- Systems Manager policy attachment
+- CloudWatch Agent policy attachment
+- EC2 application instance
+- CloudWatch CPU alarm
+
+Terraform configuration is stored in:
+
+```text
+terraform/
+```
+
+The configuration is organized into sections for:
+
+```text
+Shared Configuration
+Amazon Linux 2023 AMI
+Networking
+Security Group
+EC2 IAM, SSM, and CloudWatch Permissions
+EC2 Application Server
+CloudWatch Monitoring
+```
+
+After infrastructure changes are applied, `terraform plan` is used to verify that the live AWS environment matches the declared configuration.
+
+A clean deployment returns:
+
+```text
+No changes. Your infrastructure matches the configuration.
+```
+
+## Terraform Remote State
+
+Terraform state is stored remotely in Amazon S3 rather than being tied to an individual development workstation.
+
+Backend configuration is stored in:
+
+```text
+terraform/backend.tf
+```
+
+The Terraform state object is stored at:
+
+```text
+cloud-reliability-lab/terraform.tfstate
+```
+
+The S3 state bucket uses:
+
+- versioning
+- server-side encryption
+- blocked public access
+- Terraform state locking
+
+This allows the infrastructure to be managed consistently from multiple development machines while maintaining a shared authoritative state.
+
+Local Terraform state files are excluded from Git.
 
 ## Service Management
 
@@ -114,16 +296,24 @@ Restart the service:
 sudo systemctl restart cloud-reliability-lab
 ```
 
-View service logs:
+The AWS deployment uses:
 
-```bash
-journalctl -u cloud-reliability-lab -n 50 --no-pager
+```text
+systemd/cloud-reliability-lab-aws.service
 ```
 
-The systemd service file is included in this repository:
+The original homelab deployment configuration is also retained in the repository:
 
 ```text
 systemd/cloud-reliability-lab.service
+```
+
+The AWS service runs the application as the dedicated `cloudlab` system user.
+
+Application output is written to:
+
+```text
+/var/log/cloud-reliability-lab/app.log
 ```
 
 ## Reverse Proxy
@@ -154,47 +344,99 @@ nginx error log:
 sudo tail -n 20 /var/log/nginx/cloud-reliability-lab-error.log
 ```
 
-The nginx site configuration is included in this repository:
+The nginx configuration is included in:
 
 ```text
 nginx/cloud-reliability-lab.conf
 ```
 
-## Monitoring
+## Monitoring and Logging
 
-The application is monitored with Uptime Kuma using the `/health` endpoint.
+### AWS CloudWatch
 
-Current monitor:
+The AWS deployment uses the CloudWatch Agent to centralize application and nginx logs.
 
-| Setting               | Value                          |
-| --------------------- | ------------------------------ |
-| Monitor Type          | HTTP(s)                        |
-| Friendly Name         | Cloud Reliability Lab - Health |
-| URL                   | `http://192.168.1.216/health`  |
-| Heartbeat Interval    | 60 seconds                     |
-| Retries               | 2                              |
-| Request Timeout       | 15 seconds                     |
-| Accepted Status Codes | 200-299                        |
+Current CloudWatch log groups:
 
-The monitor checks the application through nginx, which means the check validates both the reverse proxy and the FastAPI backend.
+```text
+/cloud-reliability-lab/app
+/cloud-reliability-lab/nginx/access
+/cloud-reliability-lab/nginx/error
+```
+
+Each EC2 instance writes to a log stream identified by its EC2 instance ID.
+
+Application logs are written locally to:
+
+```text
+/var/log/cloud-reliability-lab/app.log
+```
+
+nginx logs are written locally to:
+
+```text
+/var/log/nginx/cloud-reliability-lab-access.log
+/var/log/nginx/cloud-reliability-lab-error.log
+```
+
+The CloudWatch Agent configuration is stored at:
+
+```text
+cloudwatch/amazon-cloudwatch-agent.json
+```
+
+### CloudWatch CPU Alarm
+
+Terraform manages the alarm:
+
+```text
+cloud-reliability-lab-high-cpu
+```
+
+The alarm monitors:
+
+```text
+Metric: CPUUtilization
+Statistic: Average
+Threshold: 80%
+Period: 5 minutes
+Evaluation periods: 2
+```
+
+The alarm enters the alarm state if average EC2 CPU utilization remains above 80 percent for two consecutive five-minute periods.
+
+### Homelab Monitoring
+
+The original Ubuntu deployment uses Uptime Kuma to monitor the `/health` endpoint.
+
+The monitor checks the application through nginx, validating both the reverse proxy and the FastAPI backend.
 
 ## Reliability Features
 
 Current reliability features include:
 
-* Dedicated `/health` endpoint
-* systemd-managed application process
-* Automatic service restart after failure
-* nginx reverse proxy
-* Local and remote health check validation
-* journald service logs
-* nginx access and error logs
-* Uptime Kuma health monitoring
-* Response time tracking
-* Runbook documentation
-* Incident report documentation
-* Validation screenshots
-* Version-controlled service configuration examples
+- dedicated `/health` endpoint
+- dependency-oriented `/ready` endpoint
+- systemd-managed application process
+- automatic application restart after failure
+- nginx reverse proxy
+- Uvicorn bound only to localhost
+- local and remote health check validation
+- application logging
+- nginx access and error logging
+- centralized CloudWatch logging
+- CloudWatch CPU alarm
+- AWS Systems Manager administration
+- automated EC2 provisioning
+- Terraform-managed infrastructure
+- S3 remote state
+- Terraform state locking
+- Uptime Kuma homelab monitoring
+- operational runbooks
+- incident reports
+- controlled failure testing
+- GitHub Actions tests
+- infrastructure drift validation
 
 ## Validation Screenshots
 
@@ -208,7 +450,7 @@ Windows PowerShell health check confirming that the FastAPI service is reachable
 
 ![Uptime Kuma Health Monitor](screenshots/validation/uptime-kuma-health-monitor.png)
 
-Uptime Kuma monitor showing the Cloud Reliability Lab `/health` endpoint returning successful checks through nginx with response time and uptime tracking.
+Uptime Kuma monitor showing the original homelab `/health` endpoint returning successful checks through nginx with response-time and uptime tracking.
 
 ### systemd Automatic Recovery Test
 
@@ -221,7 +463,6 @@ Controlled application crash test showing systemd moving the service into an aut
 ![journalctl Service Logs](screenshots/validation/journalctl-service-logs.png)
 
 `journalctl` output showing FastAPI service startup logs and a successful health check request through the systemd-managed service.
-
 
 ### nginx Reverse Proxy Failure — Incorrect Upstream
 
@@ -247,20 +488,31 @@ sudo systemctl kill cloud-reliability-lab
 
 systemd detected the stopped service and automatically restarted it.
 
-Recovery was validated with:
+Recovery was validated using:
 
 ```bash
 sudo systemctl status cloud-reliability-lab
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1/health
-curl http://192.168.1.216/health
 ```
+
+The original homelab deployment was also validated remotely from another machine.
 
 This confirms that the application can recover automatically from a basic process failure.
 
 ### nginx Reverse Proxy Upstream Failure
 
-A controlled reverse proxy failure was introduced by changing the nginx upstream from `127.0.0.1:8000` to `127.0.0.1:8001`.
+A controlled reverse proxy failure was introduced by changing the nginx upstream from:
+
+```text
+127.0.0.1:8000
+```
+
+to:
+
+```text
+127.0.0.1:8001
+```
 
 The nginx configuration remained syntactically valid and nginx continued running, but requests through the reverse proxy returned:
 
@@ -278,10 +530,14 @@ curl http://127.0.0.1:8000/health
 sudo systemctl status nginx --no-pager
 ss -ltnp | grep -E ':80|:8000|:8001'
 sudo tail -n 30 /var/log/nginx/cloud-reliability-lab-error.log
-sudo grep -n "proxy_pass" /etc/nginx/sites-available/cloud-reliability-lab
 ```
 
-Investigation confirmed that nginx was active on port `80`, FastAPI/Uvicorn was active on `127.0.0.1:8000`, no service was listening on port `8001`, and nginx error logs reported an upstream connection refusal.
+Investigation confirmed that:
+
+- nginx was active on port `80`
+- FastAPI/Uvicorn was active on `127.0.0.1:8000`
+- no process was listening on port `8001`
+- nginx error logs reported an upstream connection refusal
 
 The known-good nginx configuration was restored, validated with `nginx -t`, and reloaded successfully.
 
@@ -293,13 +549,45 @@ Full incident report:
 incidents/2026-08-09-nginx-reverse-proxy-failure.md
 ```
 
+## AWS Deployment
+
+The original homelab architecture has been successfully extended into AWS.
+
+| AWS Component | Status | Purpose |
+| --- | --- | --- |
+| EC2 | Implemented | Amazon Linux application server |
+| Amazon Linux 2023 | Implemented | Cloud operating system |
+| VPC | Implemented | Isolated project network |
+| Public Subnet | Implemented | Internet-reachable application subnet |
+| Internet Gateway | Implemented | Public connectivity |
+| Route Table | Implemented | Internet routing |
+| Security Group | Implemented | HTTP network access control |
+| IAM Role | Implemented | EC2 permissions |
+| IAM Instance Profile | Implemented | Associates IAM role with EC2 |
+| Systems Manager | Implemented | Administrative access without SSH |
+| CloudWatch Agent | Implemented | Centralized log collection |
+| CloudWatch Logs | Implemented | Application and nginx log storage |
+| CloudWatch Alarm | Implemented | EC2 CPU monitoring |
+| Terraform | Implemented | Infrastructure as Code |
+| EC2 User Data | Implemented | Automated server bootstrap |
+| S3 Backend | Implemented | Shared remote Terraform state |
+| S3 Versioning | Implemented | State recovery history |
+| S3 Encryption | Implemented | State encryption at rest |
+| Terraform State Locking | Implemented | Concurrent state protection |
+
 ## Project Structure
 
 ```text
 cloud-reliability-lab/
-├── README.md
+├── .github/
+│   └── workflows/
+│       └── test.yml
 ├── app/
 │   └── main.py
+├── cloudwatch/
+│   └── amazon-cloudwatch-agent.json
+├── config/
+│   └── app.conf
 ├── docs/
 ├── incidents/
 │   ├── 2026-08-09-application-crash-recovery.md
@@ -310,6 +598,7 @@ cloud-reliability-lab/
 │   ├── application-crash.md
 │   └── nginx-reverse-proxy-failure.md
 ├── scripts/
+│   └── aws-bootstrap.sh
 ├── screenshots/
 │   ├── incidents/
 │   │   └── nginx-reverse-proxy-failure/
@@ -320,36 +609,82 @@ cloud-reliability-lab/
 │       ├── systemd-auto-recovery.png
 │       ├── uptime-kuma-health-monitor.png
 │       └── windows-health-check.png
-└── systemd/
-    └── cloud-reliability-lab.service
+├── systemd/
+│   ├── cloud-reliability-lab.service
+│   └── cloud-reliability-lab-aws.service
+├── terraform/
+│   ├── backend.tf
+│   ├── main.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   ├── terraform.tfvars.example
+│   └── variables.tf
+├── tests/
+│   └── test_app.py
+├── requirements.txt
+└── README.md
 ```
+
+## Automated Testing
+
+Application tests are implemented with `pytest`.
+
+Current tests validate:
+
+- root application endpoint
+- `/health`
+- `/version`
+
+Run locally:
+
+```bash
+python -m pytest -v
+```
+
+GitHub Actions runs the test suite automatically on repository changes.
 
 ## Skills Demonstrated
 
 This project demonstrates practical experience with:
 
-* Linux administration
-* Python web service deployment
-* FastAPI application structure
-* systemd service management
-* nginx reverse proxy configuration
-* TCP/IP and HTTP troubleshooting
-* Reverse proxy fault isolation
-* TCP listener inspection with `ss`
-* HTTP 502 troubleshooting
-* Layer-by-layer application stack troubleshooting
-* Health check design
-* Application logging
-* journald log review
-* nginx access/error log review
-* Uptime Kuma monitoring
-* Response time and uptime tracking
-* Automated service recovery
-* Incident response documentation
-* Runbook creation
-* Git-based project documentation
-* SRE-style failure testing
-* Configuration documentation for Linux services
+- Linux administration
+- Amazon Linux administration
+- AWS EC2
+- AWS VPC networking
+- AWS security groups
+- AWS IAM
+- AWS Systems Manager
+- AWS CloudWatch
+- CloudWatch Agent
+- CloudWatch alarms
+- Amazon S3
+- Terraform
+- Infrastructure as Code
+- Terraform remote state
+- Terraform state locking
+- infrastructure drift detection
+- automated EC2 bootstrapping
+- Python web service deployment
+- FastAPI application structure
+- systemd service management
+- nginx reverse proxy configuration
+- TCP/IP and HTTP troubleshooting
+- reverse proxy fault isolation
+- TCP listener inspection with `ss`
+- HTTP 502 troubleshooting
+- health check design
+- application logging
+- centralized log collection
+- journald log review
+- nginx access/error log review
+- automated service recovery
+- incident response documentation
+- runbook creation
+- Git-based infrastructure management
+- GitHub Actions CI
+- pytest
+- SRE-style failure testing
+- reproducible infrastructure deployment
 
 ## Runbooks
 
@@ -357,17 +692,19 @@ Operational runbooks are stored in the `runbooks/` directory.
 
 Current runbooks:
 
-* `application-crash.md` — steps for detecting, investigating, and recovering from an application crash
-* `nginx-reverse-proxy-failure.md` — steps for isolating and recovering from a reverse proxy/upstream failure
+- `application-crash.md` — detecting, investigating, and recovering from an application crash
+- `nginx-reverse-proxy-failure.md` — isolating and recovering from a reverse proxy/upstream failure
 
 Planned runbooks:
 
-* blocked network port
-* high CPU usage
-* disk exhaustion
-* permission failure
-* failed deployment
-* DNS failure
+- blocked network port
+- high CPU usage
+- disk exhaustion
+- permission failure
+- failed deployment
+- DNS failure
+- Terraform drift
+- failed EC2 bootstrap
 
 ## Incident Reports
 
@@ -375,125 +712,120 @@ Incident reports are stored in the `incidents/` directory.
 
 Current incident reports:
 
-* `2026-08-09-application-crash-recovery.md` — controlled process failure, automatic systemd recovery, validation, and lessons learned
-* `2026-08-09-nginx-reverse-proxy-failure.md` — controlled upstream misconfiguration traced through nginx, TCP listeners, application health, and logs to identify the root cause
+- `2026-08-09-application-crash-recovery.md` — controlled process failure, automatic systemd recovery, validation, and lessons learned
+- `2026-08-09-nginx-reverse-proxy-failure.md` — controlled upstream misconfiguration traced through nginx, TCP listeners, application health, and logs to identify the root cause
 
-The incident reports document the failure symptom, investigation path, evidence, root cause, recovery, validation, and lessons learned.
+The incident reports document:
+
+- failure symptoms
+- investigation path
+- evidence collected
+- root cause
+- recovery steps
+- validation
+- lessons learned
 
 ## Failure Scenario Roadmap
 
-The lab is designed to support controlled failure testing across multiple layers of the application stack.
+The lab is designed to support controlled failure testing across multiple layers of the application and infrastructure stack.
 
 Completed:
 
-* Application process crash
-* nginx wrong upstream port / reverse proxy failure
+- application process crash
+- nginx wrong upstream port / reverse proxy failure
+- automated EC2 replacement and bootstrap validation
 
 Next planned scenarios:
 
-1. Filesystem permission failure
-2. Database dependency failure
-3. Network/port failure
-4. DNS failure
-5. Resource exhaustion — CPU, memory, and disk
-6. Bad deployment
-7. Pipeline failure
-8. Configuration drift
+1. AWS application process failure
+2. Filesystem permission failure
+3. Database dependency failure
+4. Network or security-group failure
+5. DNS failure
+6. CPU resource exhaustion
+7. Disk exhaustion
+8. Bad deployment
+9. Pipeline failure
+10. Terraform configuration drift
 
-## Planned AWS Expansion
+## Security Notes
 
-The local homelab version is intended to become the foundation for a future AWS deployment.
+Current AWS security practices include:
 
-Planned AWS components:
+- Uvicorn listens only on `127.0.0.1:8000`
+- nginx is the public-facing application entry point
+- only TCP port `80` is permitted inbound through the application security group
+- SSH port `22` is not publicly exposed
+- administrative access uses AWS Systems Manager Session Manager
+- EC2 permissions are provided through an IAM instance role
+- Instance Metadata Service v2 is required
+- Terraform state is stored in a private S3 bucket
+- S3 public access is blocked
+- S3 state versioning is enabled
+- Terraform state is encrypted at rest
+- Terraform state locking is enabled
+- credentials are not committed to the repository
+- local Terraform state files are excluded from Git
+- Python virtual environments are excluded from Git
 
-| AWS Component     | Purpose                          |
-| ----------------- | -------------------------------- |
-| EC2               | Linux compute host               |
-| Amazon Linux 2023 | Cloud server operating system    |
-| Security Groups   | Network access control           |
-| IAM Role          | Instance permissions             |
-| CloudWatch Agent  | Metrics and logs                 |
-| CloudWatch Alarms | Alerting                         |
-| Terraform         | Infrastructure as Code           |
-| S3                | Optional artifact or log storage |
-
-Future AWS architecture:
-
-```text
-Internet
-   |
-   v
-AWS Security Group
-   |
-   v
-EC2 Instance
-   |
-   v
-nginx :80
-   |
-   v
-FastAPI / Uvicorn
-127.0.0.1:8000
-   |
-   v
-systemd
-   |
-   v
-CloudWatch Logs and Metrics
-```
+The current public application endpoint uses HTTP. HTTPS/TLS is a planned improvement.
 
 ## Future Improvements
 
 Planned improvements include:
 
-* Add install/setup script
-* Add deployment script
-* Add failure simulation scripts
-* Add CloudWatch-based monitoring in AWS
-* Add Terraform configuration for EC2 deployment
-* Add IAM role configuration
-* Add CloudWatch alarms
-* Add automated recovery examples
-* Add more incident reports and runbooks
-* Add architecture diagrams
-* Add public cloud deployment documentation
-
-## Security Notes
-
-This lab is currently designed for local network use.
-
-Current security practices:
-
-* Uvicorn listens only on `127.0.0.1`
-* nginx is the client-facing HTTP entry point
-* Administrative access is limited to the local network
-* SSH is not exposed directly to the public internet
-* No secrets, private keys, or credentials should be committed to the repository
-* Environment files and Python virtual environments should be excluded with `.gitignore`
+- add AWS-specific failure and recovery scenarios
+- add CloudWatch alarm notification delivery
+- add filesystem permission failure testing
+- add database dependency failure testing
+- add resource exhaustion testing
+- add bad-deployment rollback testing
+- add Terraform drift testing
+- add automated infrastructure validation
+- add HTTPS/TLS
+- add stable DNS
+- add an AWS architecture diagram
+- expand operational runbooks
+- expand incident reports
 
 ## Status
 
-Current status:
-
 ```text
 Local homelab deployment: Working
+
+FastAPI application: Working
 FastAPI health endpoint: Working
+FastAPI version endpoint: Working
+pytest tests: Passing
+GitHub Actions CI: Working
+
 systemd service: Working
 Automatic restart: Validated
 nginx reverse proxy: Working
-Uptime Kuma monitor: Working
-nginx configuration file: Added
-systemd service file: Added
-Windows health check screenshot: Added
-Uptime Kuma monitoring screenshot: Added
-systemd recovery screenshot: Added
-journalctl service log screenshot: Added
+
+Application crash scenario: Validated
+nginx upstream failure scenario: Validated
 Application crash runbook: Created
+nginx failure runbook: Created
 Application crash incident report: Created
-nginx reverse proxy failure test: Validated
-nginx reverse proxy failure screenshots: Added
-nginx reverse proxy failure runbook: Created
-nginx reverse proxy incident report: Created
-Next scenario: Filesystem permission failure
-AWS deployment: Planned
+nginx incident report: Created
+
+AWS VPC infrastructure: Working
+Amazon Linux 2023 EC2 deployment: Working
+Terraform infrastructure: Working
+Automated EC2 bootstrap: Validated
+AWS Systems Manager access: Working
+Public SSH exposure: Disabled
+CloudWatch Agent: Working
+CloudWatch application logging: Working
+CloudWatch nginx logging: Working
+CloudWatch CPU alarm: Working
+
+S3 Terraform backend: Working
+Terraform state versioning: Enabled
+Terraform state encryption: Enabled
+Terraform state locking: Working
+Terraform drift check: Clean
+
+Next reliability scenario: AWS-specific failure and recovery test
 ```
