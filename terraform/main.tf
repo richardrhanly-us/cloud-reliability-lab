@@ -197,3 +197,37 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
 
   tags = local.common_tags
 }
+
+# Convert systemd application failures into a CloudWatch metric.
+resource "aws_cloudwatch_log_metric_filter" "app_systemd_failure" {
+  name           = "${var.project_name}-systemd-failure"
+  log_group_name = "/cloud-reliability-lab/systemd"
+
+  pattern = "\"Failed with result\""
+
+  metric_transformation {
+    name          = "SystemdFailureCount"
+    namespace     = "CloudReliabilityLab"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
+# Alarm when at least one systemd application failure is detected.
+resource "aws_cloudwatch_metric_alarm" "app_systemd_failure" {
+  alarm_name          = "${var.project_name}-systemd-failure"
+  alarm_description   = "Application service failure detected in systemd logs."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+
+  evaluation_periods = 1
+  threshold          = 1
+
+  metric_name = "SystemdFailureCount"
+  namespace   = "CloudReliabilityLab"
+  statistic   = "Sum"
+  period      = 60
+
+  treat_missing_data = "notBreaching"
+
+  tags = local.common_tags
+}
